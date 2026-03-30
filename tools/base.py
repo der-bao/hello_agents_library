@@ -32,6 +32,8 @@ class Tool(ABC):
     
     def validate_parameters(self, parameters: Dict[str, Any]) -> bool:
         """验证参数"""
+        # 这里的str是参数名称
+        # 如 {"expression": "2 + 2"} 来自LLM的工具调用如{"tool_name": "calculator", "parameters": {"expression": "2 + 2"}}
         required_params = [p.name for p in self.get_parameters() if p.required]
         return all(param in parameters for param in required_params)
     

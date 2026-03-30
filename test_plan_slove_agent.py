@@ -1,6 +1,6 @@
 # test_plan_solve_agent.py
 from dotenv import load_dotenv
-from hello_agents.core.llm import HelloAgentsLLM
+from core.llm import HelloAgentsLLM
 from agents.plan_solve_agent import PlanAndSolveAgent
 
 # 加载环境变量

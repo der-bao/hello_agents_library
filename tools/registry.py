@@ -2,7 +2,7 @@
 
 from typing import Optional, Any, Callable
 from core.exceptions import HelloAgentsException
-from base import Tool
+from tools.base import Tool
 
 class ToolRegistry:
     """

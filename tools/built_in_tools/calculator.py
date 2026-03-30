@@ -5,7 +5,8 @@ import operator
 import math
 from typing import Dict, Any
 
-from base import Tool
+from tools.base import Tool
+from tools.base import ToolParameter
 from core.exceptions import ToolException
 
 class CalculatorTool(Tool):
@@ -104,7 +105,7 @@ class CalculatorTool(Tool):
     
     def get_parameters(self):
         """获取工具参数定义"""
-        from ..base import ToolParameter
+        # 这里定义了一个参数 input，表示要计算的数学表达式
         return [
             ToolParameter(
                 name="input",
