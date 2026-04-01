@@ -39,7 +39,7 @@ class MemoryTool(Tool):
         self.memory_manager = MemoryManager(
             config=self.memory_config,
             user_id=user_id,
-            enable_working="working" in self.memory_types,
+            enable_working="working" in self.memory_types,      # 返回布尔值，指示是否启用工作记忆
             enable_episodic="episodic" in self.memory_types,
             enable_semantic="semantic" in self.memory_types,
             enable_perceptual="perceptual" in self.memory_types
