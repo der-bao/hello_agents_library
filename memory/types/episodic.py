@@ -75,7 +75,7 @@ class EpisodicMemory(BaseMemory):
         self.embedder = get_text_embedder()
 
         # 向量存储（Qdrant - 使用连接管理器避免重复连接）
-        from ..storage.qdrant_store import QdrantConnectionManager
+        from memory.storage.qdrant_store import QdrantConnectionManager
         qdrant_url = os.getenv("QDRANT_URL")
         qdrant_api_key = os.getenv("QDRANT_API_KEY")
         self.vector_store = QdrantConnectionManager.get_instance(
@@ -132,7 +132,8 @@ class EpisodicMemory(BaseMemory):
         # 2) 向量索引（Qdrant）
         try:
             embedding = self.embedder.encode(memory_item.content)
-            if hasattr(embedding, "tolist"):
+            # 有的嵌入模型返回numpy数组(有to_list()方法)，有的返回列表，统一转换为列表
+            if hasattr(embedding, "tolist"):        
                 embedding = embedding.tolist()
             self.vector_store.add_vectors(
                 vectors=[embedding],
@@ -193,18 +194,19 @@ class EpisodicMemory(BaseMemory):
         # 过滤与重排
         now_ts = int(datetime.now().timestamp())
         results: List[Tuple[float, MemoryItem]] = []
-        seen = set()
+        seen = set()    # 避免重复记忆ID（可能来自多个检索途径）
         for hit in hits:
             meta = hit.get("metadata", {})
             mem_id = meta.get("memory_id")
             if not mem_id or mem_id in seen:
                 continue
             
-            # 检查是否已遗忘
+            # 检查是否已遗忘 (硬删除模式下已遗忘的记忆会被直接删除，不会出现在向量检索结果中；软删除模式下需要检查标记)
             episode = next((e for e in self.episodes if e.episode_id == mem_id), None)
             if episode and episode.context.get("forgotten", False):
                 continue  # 跳过已遗忘的记忆
-                
+
+            # 结构化过滤    
             if candidate_ids is not None and mem_id not in candidate_ids:
                 continue
             if session_id and meta.get("session_id") != session_id:

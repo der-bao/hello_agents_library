@@ -101,7 +101,7 @@ class QdrantVectorStore:
         self.collection_name = collection_name
         self.vector_size = vector_size
         self.timeout = timeout
-        # HNSW/Query params via env
+        # HNSW/Query params via env  HNSW是一种高效的向量数据库查找算法
         try:
             self.hnsw_m = int(os.getenv("QDRANT_HNSW_M", "32"))
         except Exception:
