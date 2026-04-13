@@ -377,16 +377,43 @@ class QdrantVectorStore:
                 search_params = models.SearchParams(hnsw_ef=self.search_ef, exact=self.search_exact)
             except Exception:
                 search_params = None
-            search_result = self.client.search(
-                collection_name=self.collection_name,
-                query_vector=query_vector,
-                query_filter=query_filter,
-                limit=limit,
-                score_threshold=score_threshold,
-                with_payload=True,
-                with_vectors=False,
-                search_params=search_params
-            )
+            
+            # 兼容新版 qdrant-client (v1.11+) 使用 query 接口，旧版使用 search
+            if hasattr(self.client, "query_points"):
+                search_result = self.client.query_points(
+                    collection_name=self.collection_name,
+                    query=query_vector,
+                    query_filter=query_filter,
+                    limit=limit,
+                    score_threshold=score_threshold,
+                    with_payload=True,
+                    with_vectors=False,
+                    search_params=search_params
+                ).points
+            elif hasattr(self.client, "query"):
+                search_result = self.client.query(
+                    collection_name=self.collection_name,
+                    query=query_vector,
+                    query_filter=query_filter,
+                    limit=limit,
+                    score_threshold=score_threshold,
+                    with_payload=True,
+                    with_vectors=False,
+                    search_params=search_params
+                )
+                if hasattr(search_result, "points"):
+                    search_result = search_result.points
+            else:
+                search_result = self.client.search(
+                    collection_name=self.collection_name,
+                    query_vector=query_vector,
+                    query_filter=query_filter,
+                    limit=limit,
+                    score_threshold=score_threshold,
+                    with_payload=True,
+                    with_vectors=False,
+                    search_params=search_params
+                )
             
             # 转换结果格式
             results = []
@@ -491,10 +518,10 @@ class QdrantVectorStore:
             
             info = {
                 "name": self.collection_name,
-                "vectors_count": collection_info.vectors_count,
-                "indexed_vectors_count": collection_info.indexed_vectors_count,
-                "points_count": collection_info.points_count,
-                "segments_count": collection_info.segments_count,
+                "vectors_count": getattr(collection_info, "points_count", 0),
+                "indexed_vectors_count": getattr(collection_info, "indexed_vectors_count", 0),
+                "points_count": getattr(collection_info, "points_count", 0),
+                "segments_count": getattr(collection_info, "segments_count", 0),
                 "config": {
                     "vector_size": self.vector_size,
                     "distance": self.distance.value,
