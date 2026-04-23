@@ -57,9 +57,9 @@ class EpisodicMemory(BaseMemory):
     def __init__(self, config: MemoryConfig, storage_backend=None):
         super().__init__(config, storage_backend)
         
-        # 本地缓存（内存）
+        # 本地缓存（内存）用于极其快速的近期记忆读取、简单关键词匹配过滤。
         self.episodes: List[Episode] = []
-        self.sessions: Dict[str, List[str]] = {}  # session_id -> episode_ids
+        self.sessions: Dict[str, List[str]] = {}  # session_id : list[episode_ids]
         
         # 模式识别缓存
         self.patterns_cache = {}
@@ -112,6 +112,7 @@ class EpisodicMemory(BaseMemory):
         self.sessions[session_id].append(episode.episode_id)
 
         # 1) 权威存储（SQLite）
+        # SQLite中timestamp以整数形式存储（秒级时间戳），因此需要转换
         ts_int = int(memory_item.timestamp.timestamp())
         self.doc_store.add_memory(
             memory_id=memory_item.id,
@@ -173,6 +174,7 @@ class EpisodicMemory(BaseMemory):
                 importance_threshold=importance_threshold,
                 limit=1000
             )
+            # 集合推导式提取记忆ID，供后续向量检索结果过滤使用
             candidate_ids = {d["memory_id"] for d in docs}
 
         # 向量检索（Qdrant）
@@ -192,6 +194,19 @@ class EpisodicMemory(BaseMemory):
             hits = []
 
         # 过滤与重排
+        """
+        (1)第一层过滤：去重过滤
+            如果这个记忆在这一轮检索中已经处理过了（存在于 seen 集合中），或者这条数据根本没有 memory_id，直接抛弃。
+        (2)第二层过滤：软删除/遗忘状态过滤
+            从内存缓存 (self.episodes) 中把这个对象捞出来，检查它是不是被标记为 forgotten = True了。
+            因为如果数据库采用软删除的方式，已经被遗忘的记忆在数据库中仍然存在，并且可能会出现在向量检索结果中，所以需要在这里进行过滤。
+        (3)第三层过滤：结构化过滤
+            candidate_ids 就是之前根据结构化条件从 SQLite 中查询出来的。
+            然后再筛选符合session_id的记忆（如果 session_id 过滤条件存在的话）。
+        (4)第四层过滤：数据完整性过滤
+            因为向量检索结果中可能只包含了 memory_id 和一些元数据，但没有完整的 content、timestamp 等信息，
+            所以需要根据 memory_id 从 SQLite 中获取完整的记录，如果记录不存在或者无法获取，就直接丢弃这个检索结果。
+        """
         now_ts = int(datetime.now().timestamp())
         results: List[Tuple[float, MemoryItem]] = []
         seen = set()    # 避免重复记忆ID（可能来自多个检索途径）
@@ -201,7 +216,7 @@ class EpisodicMemory(BaseMemory):
             if not mem_id or mem_id in seen:
                 continue
             
-            # 检查是否已遗忘 (硬删除模式下已遗忘的记忆会被直接删除，不会出现在向量检索结果中；软删除模式下需要检查标记)
+            # 检查是否已遗忘 (硬删除模式下已遗忘的记忆会被直接删除，不会出现在向量检索结果中；软删除模式下需要检查self.episodes标记)
             episode = next((e for e in self.episodes if e.episode_id == mem_id), None)
             if episode and episode.context.get("forgotten", False):
                 continue  # 跳过已遗忘的记忆

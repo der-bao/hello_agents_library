@@ -28,7 +28,7 @@ class WorkingMemory(BaseMemory):
         
         # 工作记忆特定配置
         self.max_capacity = self.config.working_memory_capacity
-        self.max_tokens = self.config.working_memory_tokens
+        self.max_tokens = self.config.working_memory_tokens     # 工作记忆的token限制
         # 纯内存TTL(time)（分钟），可通过在 MemoryConfig 上挂载 working_memory_ttl_minutes 覆盖
         self.max_age_minutes = getattr(self.config, 'working_memory_ttl_minutes', 120)
         self.current_tokens = 0   # 当前记忆的总token数
@@ -38,7 +38,11 @@ class WorkingMemory(BaseMemory):
         self.memories: List[MemoryItem] = []
         
         # 使用优先级队列管理记忆
-        self.memory_heap = []  # (priority, timestamp, memory_item)
+        """
+        最小堆，存储格式为 (-priority, timestamp, memory_item)
+        前两个参数用于排序，memory_item是实际的记忆对象
+        """
+        self.memory_heap = []  # (-priority, timestamp, memory_item)
     
     def add(self, memory_item: MemoryItem) -> str:
         """添加工作记忆"""

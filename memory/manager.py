@@ -140,7 +140,8 @@ class MemoryManager:
                         min_importance=min_importance,
                         user_id=self.user_id
                     )
-                    all_results.extend(type_results)
+                    # extend()会将列表中的元素逐个添加到all_results中，而不是将整个列表作为一个元素添加
+                    all_results.extend(type_results)    
                 except Exception as e:
                     logger.warning(f"检索 {memory_type} 记忆时出错: {e}")
                     continue

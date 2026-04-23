@@ -22,7 +22,8 @@ class MemoryItem(BaseModel):
     metadata: Dict[str, Any] = {}
 
     class Config:
-        arbitrary_types_allowed = True
+        # pydantic默认不允许字段值为任意类型（如Dict[str, Any]），需要设置以下配置来允许
+        arbitrary_types_allowed = True      # 允许任意类型的字段
 
 class MemoryConfig(BaseModel):
     """记忆系统配置"""
@@ -47,6 +48,15 @@ class BaseMemory(ABC):
     """记忆基类
 
     定义所有记忆类型的通用接口和行为
+    - add: 添加记忆项
+    - retrieve: 检索相关记忆
+    - update: 更新记忆项
+    - remove: 删除记忆项
+    - has_memory: 检查记忆是否存在
+    - clear: 清空所有记忆
+    - get_stats: 获取记忆统计信息
+    - _generate_id: 生成记忆ID
+    - _calculate_importance: 计算记忆重要性
     """
 
     def __init__(self, config: MemoryConfig, storage_backend=None):
@@ -138,7 +148,7 @@ class BaseMemory(ABC):
     def _generate_id(self) -> str:
         """生成记忆ID"""
         import uuid
-        return str(uuid.uuid4())
+        return str(uuid.uuid4())   # uuid.uuid4()是一个uuid对象，使用str()将其转换为字符串形式
 
     def _calculate_importance(self, content: str, base_importance: float = 0.5) -> float:
         """计算记忆重要性
